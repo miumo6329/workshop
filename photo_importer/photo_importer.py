@@ -13,10 +13,6 @@ def get_key_from_value(d, val):
     return None
 
 
-# EXIFキー情報
-EXIF_KEY_DATE_TIME_ORIGINAL = get_key_from_value(TAGS, 'DateTimeOriginal')
-
-
 def get_exif(img_path):
 
     img = Image.open(img_path)
@@ -26,29 +22,6 @@ def get_exif(img_path):
     for key, value in exif.items():
         exif_data[TAGS.get(key)] = value
     return exif_data
-
-
-def copy_photo(img_path, export_root):
-    if not img_path.endswith('.JPG'):
-        return
-
-    # im = Image.open(path)
-    # exif = im.getexif()
-    # print(exif)
-    # date_time = exif[EXIF_KEY_DATE_TIME_ORIGINAL]
-    # date_time = date_time.split(' ')[0].split(':')
-    # print(date_time)
-
-    date = get_exif(img_path)['DateTimeOriginal']
-    year, month, day = date.split(' ')[0].split(':')
-    print(img_path, year, month, day)
-
-    if os.path.isdir(os.path.join(export_root, year)):
-        print(year, month, day)
-
-    # exif = im._getexif()
-    # for id, value in exif.items():
-    #     print(id, TAGS.get(id), value)
 
 
 def main():
@@ -75,21 +48,6 @@ def main():
     last_update = last_update.split('_')[0]
 
     for target in sorted(import_list):
-        # if not target.endswith('.JPG'):
-        #     continue
-        #
-        # target_date = get_exif(target)['DateTimeOriginal']
-        # year, month, day = target_date.split(' ')[0].split(':')
-        # year_month_day = target_date.split(' ')[0].replace(':', '')
-        #
-        # print(year_month_day)
-        # if int(year_month_day) > int(last_update):
-        #     print(target)
-        #     export_dir = os.path.join(export_root, year, year_month_day+'_')
-        #     if not os.path.isdir(export_dir):
-        #         os.mkdir(export_dir)
-        #     shutil.copy2(target, os.path.join(export_dir, os.path.basename(target)))
-
         unix_time = os.path.getctime(target)
         dt = datetime.fromtimestamp(unix_time)
 
@@ -113,51 +71,15 @@ def main():
                 print('既存ファイル :', os.path.join(export_dir, os.path.basename(target)))
             else:
                 print('移動対象！　:', os.path.join(export_dir, os.path.basename(target)))
+                shutil.copy2(target, os.path.join(export_dir, os.path.basename(target)))
         elif target.endswith('.RAF'):
+            if not os.path.isdir(os.path.join(export_dir, 'RAW')):
+                os.mkdir(os.path.join(export_dir, 'RAW'))
             if os.path.isfile(os.path.join(export_dir, 'RAW', os.path.basename(target))):
                 print('既存ファイル :', os.path.join(export_dir, 'RAW', os.path.basename(target)))
             else:
                 print('移動対象！　:', os.path.join(export_dir, 'RAW', os.path.basename(target)))
-
-
-        """
-        if target.endswith('.RAF'):
-            # 移動先フォルダ作成
-            export_dir = os.path.join(export_root, str(dt.year), dt.strftime('%Y%m%d'))
-            # 終端フォルダ(YYYYMMDD_イベント名)のリストを取得
-            end_dirs = [end_dir for end_dir in os.listdir(os.path.join(export_root, str(dt.year)))]
-            # 対象ファイルの更新日フォルダがなかった場合、新規作成
-            if not dt.strftime('%Y%m%d') in [d.split('_')[0] for d in end_dirs]:
-                os.mkdir(export_dir)
-            else:
-                for d in end_dirs:
-                    if dt.strftime('%Y%m%d') == d.split('_')[0]:
-                        export_dir = os.path.join(export_root, str(dt.year), d)
-            
-            if os.path.isfile(os.path.join(export_root, str(dt.year), end_dir, 'RAW', os.path.basename(target))):
-            
-            
-            
-            
-            if os.path.isfile(os.path.join(export_root, str(dt.year), end_dir, 'RAW', os.path.basename(target))):
-                print('既存ファイル :', os.path.join(export_root, str(dt.year), end_dir, 'RAW', os.path.basename(target)))
-            else:
-                print('移動対象！　:', os.path.join(export_root, str(dt.year), end_dir, 'RAW', os.path.basename(target)))
-
-                # 終端フォルダのYYYYMMDDと対象ファイルの更新日
-                if end_dir.split('_')[0] == dt.strftime('%Y%m%d'):
-                    if os.path.isfile(os.path.join(export_root, str(dt.year), end_dir, 'RAW', os.path.basename(target))):
-                        print('既存ファイル :', os.path.join(export_root, str(dt.year), end_dir, 'RAW', os.path.basename(target)))
-                    else:
-                        print('移動対象！　:', os.path.join(export_root, str(dt.year), end_dir, 'RAW', os.path.basename(target)))
-            # export_dir = os.path.join(export_root, str(dt.year), )
-        else:
-            if int(dt.strftime('%Y%m%d')) > int(last_update):
-                export_dir = os.path.join(export_root, str(dt.year), dt.strftime('%Y%m%d') + '_')
-                if not os.path.isdir(export_dir):
-                    os.mkdir(export_dir)
-                shutil.copy2(target, os.path.join(export_dir, os.path.basename(target)))
-"""
+                shutil.copy2(target, os.path.join(export_dir, 'RAW', os.path.basename(target)))
 
 
 if __name__ == '__main__':
