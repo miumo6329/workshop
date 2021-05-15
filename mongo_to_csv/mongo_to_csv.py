@@ -6,7 +6,7 @@ import PySimpleGUI as sg
 
 
 class Mongo:
-    def __init__(self, host, port):
+    def __init__(self):
         self.client = None
         self.dbs = None
         self.db = None
@@ -55,25 +55,17 @@ class Option:
 class MainDisplay:
     def __init__(self):
         self.option = Option()
-        self.mongo = Mongo(self.option.host, self.option.port)
+        self.mongo = Mongo()
 
         sg.theme('DarkBlue12')
-        # self.layout = [
-        #     [sg.Button(button_text='Option', key='-OPTION-', )],
-        #     [sg.Text('Database List')],
-        #     [sg.Listbox(values=(), size=(30, 5), key='-DATABASELIST-')],
-        #     [sg.Button(button_text='Select Database', key='-DATABASE-')],
-        #     [sg.Text('_' * 30)],
-        #     [sg.Text('Collections')],
-        #     [sg.Listbox(values=(), size=(30, 20), key='-COLLECTIONLIST-')],
-        # ]
         self.layout = [
-            [sg.Button(button_text='Option', key='-OPTION-', )],
-            [sg.Text('Database List'), sg.Text('Collections')],
+            [sg.Text('', size=(60, 1)), sg.Button(button_text='Option', key='-OPTION-', )],
+            [sg.Text('Database List', size=(30, 1)), sg.Text('Collections')],
             [sg.Listbox(values=(), size=(30, 5), key='-DATABASELIST-'),
              sg.Text('⇒'),
              sg.Listbox(values=(), size=(30, 5), key='-COLLECTIONLIST-')],
             [sg.Button(button_text='Select Database', key='-DATABASE-'),
+             sg.Text('', size=(18, 1)),
              sg.Button(button_text='Select Collection', key='-COLLECTION-')],
             [sg.HorizontalSeparator()],
         ]
@@ -122,7 +114,9 @@ class OptionDisplay:
              sg.Text(key='Connect MongoDB Result', size=(15, 1))]
         ]
         tab2_layout = [
-            [sg.Text('export', size=(5, 1)), sg.InputText(), sg.FolderBrowse()]
+            [sg.Text('export', size=(5, 1)),
+             sg.InputText(os.path.dirname(self.option.export_path)),
+             sg.FolderBrowse()]
         ]
         self.layout = [
             [sg.TabGroup([[sg.Tab('Connect', tab1_layout), sg.Tab('Export', tab2_layout)]])],
@@ -145,53 +139,6 @@ class OptionDisplay:
                     self.window['Connect MongoDB Result'].update('Error!', text_color=('#ff0000'))
         self.window.close()
         return client_updated
-
-# # sg.theme('Dark Blue 3')
-# sg.theme('GreenTan')
-#
-# tab1_layout = [
-#     [sg.Button(button_text='Option')],
-#     [sg.Text('host', size=(5, 1)), sg.Input('localhost', size=(15, 1), key='host')],
-#     [sg.Text('port', size=(5, 1)), sg.Input('27017', size=(15, 1), key='post')],
-#     [sg.Submit(button_text='Connect MongoDB'),
-#      sg.Text(key='Connect MongoDB Result', size=(15, 1))],
-#     [sg.Text('_' * 30)],
-#     [sg.Text('Database List')],
-#     [sg.Listbox(values=(), size=(30, 5), key='dbs')],
-#     [sg.Button(button_text='Select Database')]
-# ]
-#
-# tab2_layout = [
-#     [sg.Text('Collections')],
-#     [sg.Listbox(values=(), size=(30, 20), key='collections')],
-# ]
-#
-# layout = [
-#     [sg.TabGroup([[sg.Tab('Connect', tab1_layout), sg.Tab('Collections', tab2_layout)]])]
-# ]
-#
-# window = sg.Window('Mongo to Csv', layout)
-# mongo = Mongo()
-#
-# while True:
-#     event, values = window.read()
-#     print(event, values)
-#     if event in (None, 'Exit'):
-#         break
-#     if event == 'Option':
-#         sg.popup(option_layout)
-#     if event == 'Connect MongoDB':
-#         mongo.set_mongo_client(values['host'], values['post'])
-#         window['Connect MongoDB Result'].update('Success!', text_color=("#0000ff"))
-#         # window['Connect MongoDB Result'].update('Error!', text_color=('#ff0000'))
-#         window['dbs'].update(values=mongo.dbs)
-#     if event == 'Select Database':
-#         mongo.select_db(values['dbs'][0])
-#         window['collections'].update(values=mongo.get_collections())
-#
-#
-#
-# window.close()
 
 
 if __name__ == '__main__':
