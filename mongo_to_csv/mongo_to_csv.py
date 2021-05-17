@@ -1,6 +1,6 @@
 import os
 from pymongo import MongoClient, errors
-from datetime import datetime
+from datetime import datetime, timedelta
 from pprint import pprint
 import PySimpleGUI as sg
 
@@ -9,9 +9,10 @@ class Mongo:
     def __init__(self):
         self.client = None
         self.dbs = None
-        self.db = None
         self.collections = None
-        self.collection = None
+
+        self.selected_db = None
+        self.selected_collection = None
 
     def connect_client(self, host, port):
         try:
@@ -23,14 +24,14 @@ class Mongo:
             return False
 
     def select_db(self, db_name):
-        self.db = self.client[db_name]
+        self.selected_db = self.client[db_name]
 
     def get_collections(self):
-        self.collections = self.db.list_collection_names()
+        self.collections = self.selected_db.list_collection_names()
         return self.collections
 
     def select_collection(self, collection_name):
-        self.collection = self.db[collection_name]
+        self.selected_collection = self.selected_db[collection_name]
 
     def add_one(self):
         post = {
@@ -38,11 +39,19 @@ class Mongo:
             'content': 'かきくけこ',
             'created_at': datetime.now()
         }
-        return self.db.test.insert_one(post)
+        return self.selected_db.test.insert_one(post)
 
     def get_item(self):
-        for data in self.db.test.find():
-            pprint(data)
+        data = []
+        for d in self.selected_collection.find():
+            data.append(d)
+        return data
+
+    def find(self, filter_):
+        data = []
+        for d in self.selected_collection.find(filter=filter_):
+            data.append(d)
+        return data
 
 
 class Option:
@@ -58,8 +67,23 @@ class MainDisplay:
         self.mongo = Mongo()
 
         sg.theme('DarkBlue12')
+
+        self.condition_layout = [
+            [sg.InputText('', size=(20, 1), key='-FIELD1-'), sg.Text(':'),
+             sg.InputText('', size=(20, 1), key='-VALUE1-')],
+            [sg.InputText('', size=(20, 1), key='-FIELD2-'), sg.Text(':'),
+             sg.InputText('', size=(20, 1), key='-VALUE2-')],
+            [sg.InputText('', size=(20, 1), key='-FIELD3-'), sg.Text(':'),
+             sg.InputText('', size=(20, 1), key='-VALUE3-')],
+            [sg.Input(datetime.now(), size=(20, 1), key='-CALENDAR-'),
+             sg.CalendarButton('calendar'),
+             sg.Input('10', size=(2, 1), key='-AGONUM-'),
+             sg.InputCombo(('min', 'hour', 'day'), default_value='min', key='-AGOUNIT-'),
+             sg.Text('ago data find.')],
+        ]
+
         self.layout = [
-            [sg.Text('', size=(60, 1)), sg.Button(button_text='Option', key='-OPTION-', )],
+            [sg.Text('', size=(55, 1)), sg.Button(button_text='Option', key='-OPTION-', )],
             [sg.Text('Database List', size=(30, 1)), sg.Text('Collections')],
             [sg.Listbox(values=(), size=(30, 5), key='-DATABASELIST-'),
              sg.Text('⇒'),
@@ -68,6 +92,10 @@ class MainDisplay:
              sg.Text('', size=(18, 1)),
              sg.Button(button_text='Select Collection', key='-COLLECTION-')],
             [sg.HorizontalSeparator()],
+            [sg.Text('Setting find Conditions.')],
+            [self.condition_layout],
+            [sg.Button('Find', key='-FIND-')],
+            [sg.Multiline(default_text='', size=(70, 20), key='-DATA-')]
         ]
         self.window = sg.Window(title='MongoToCsv', layout=self.layout, finalize=True)
 
@@ -80,6 +108,9 @@ class MainDisplay:
         if client_updated:
             self.window['-DATABASELIST-'].update(values=self.mongo.dbs)
         del option_display
+
+    def get_condition(self):
+        pass
 
     def main(self):
         while True:
@@ -98,6 +129,18 @@ class MainDisplay:
                 if len(values['-COLLECTIONLIST-']) <= 0:
                     continue
                 self.mongo.select_collection(values['-COLLECTIONLIST-'][0])
+            if event == '-FIND-':
+                # TODO: 時間を検索条件に反映する
+                filter_ = {
+                    values['-FIELD1-']: values['-VALUE1-'],
+                    # 'end_time': datetime.strptime(values['-CALENDAR-'].split('.')[0], '%Y-%m-%d %H:%M:%S'),
+                    # 'start_time': datetime.strptime(values['-CALENDAR-'].split('.')[0], '%Y-%m-%d %H:%M:%S') - timedelta(minutes=int(values['-AGONUM-'])),
+                }
+                print(filter_)
+                data = self.mongo.find(filter_)
+                print(data)
+                self.window['-DATA-'].update(value=data)
+
         self.window.close()
 
 
@@ -120,7 +163,7 @@ class OptionDisplay:
         ]
         self.layout = [
             [sg.TabGroup([[sg.Tab('Connect', tab1_layout), sg.Tab('Export', tab2_layout)]])],
-            [sg.Exit()]
+            [sg.Text('', size=(50, 1)), sg.Exit()]
         ]
         self.window = sg.Window(title='Option', layout=self.layout)
 
