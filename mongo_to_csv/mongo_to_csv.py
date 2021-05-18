@@ -68,16 +68,20 @@ class MainDisplay:
 
         sg.theme('DarkBlue12')
 
-        self.condition_layout = [
+        self.field_conditions = [
             [sg.InputText('', size=(20, 1), key='-FIELD1-'), sg.Text(':'),
              sg.InputText('', size=(20, 1), key='-VALUE1-')],
             [sg.InputText('', size=(20, 1), key='-FIELD2-'), sg.Text(':'),
              sg.InputText('', size=(20, 1), key='-VALUE2-')],
             [sg.InputText('', size=(20, 1), key='-FIELD3-'), sg.Text(':'),
              sg.InputText('', size=(20, 1), key='-VALUE3-')],
-            [sg.Input(datetime.now(), size=(20, 1), key='-CALENDAR-'),
+        ]
+
+        self.condition_layout = [
+            [self.field_conditions],
+            [sg.Input(datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S'), size=(20, 1), key='-CALENDAR-'),
              sg.CalendarButton('calendar'),
-             sg.Input('10', size=(2, 1), key='-AGONUM-'),
+             sg.Input('1', size=(2, 1), key='-AGONUM-'),
              sg.InputCombo(('sec', 'min', 'hour', 'day'), default_value='min', key='-AGOUNIT-'),
              sg.Text('ago data find.')],
         ]
@@ -109,8 +113,26 @@ class MainDisplay:
             self.window['-DATABASELIST-'].update(values=self.mongo.dbs)
         del option_display
 
-    def get_condition(self):
-        pass
+    def get_condition(self, values):
+        # 時間差分を算出
+        if values['-AGOUNIT-'] == 'sec':
+            delta = timedelta(seconds=int(values['-AGONUM-']))
+        elif values['-AGOUNIT-'] == 'min':
+            delta = timedelta(minutes=int(values['-AGONUM-']))
+        elif values['-AGOUNIT-'] == 'hour':
+            delta = timedelta(hours=int(values['-AGONUM-']))
+        elif values['-AGOUNIT-'] == 'day':
+            delta = timedelta(days=int(values['-AGONUM-']))
+        # 開始時間、終了時間を設定
+        end_time = datetime.strptime(values['-CALENDAR-'].split('.')[0], '%Y-%m-%d %H:%M:%S')
+        start_time = end_time - delta
+
+        filter_ = {}
+        for i in range(1, 4):
+            if values['-FIELD' + str(i) + '-'] != '' and values['-VALUE' + str(i) + '-'] != '':
+                filter_[values['-FIELD' + str(i) + '-']] = values['-VALUE' + str(i) + '-']
+        filter_['datetime'] = {'$gte': start_time, '$lt': end_time}
+        return filter_
 
     def main(self):
         while True:
@@ -132,23 +154,7 @@ class MainDisplay:
             if event == '-FIND-':
                 if len(values['-COLLECTIONLIST-']) <= 0 or self.mongo.selected_collection is None:
                     continue
-                # 時間差分を算出
-                if values['-AGOUNIT-'] == 'sec':
-                    delta = timedelta(seconds=int(values['-AGONUM-']))
-                elif values['-AGOUNIT-'] == 'min':
-                    delta = timedelta(minutes=int(values['-AGONUM-']))
-                elif values['-AGOUNIT-'] == 'hour':
-                    delta = timedelta(hours=int(values['-AGONUM-']))
-                elif values['-AGOUNIT-'] == 'day':
-                    delta = timedelta(days=int(values['-AGONUM-']))
-                # 開始時間、終了時間を設定
-                end_time = datetime.strptime(values['-CALENDAR-'].split('.')[0], '%Y-%m-%d %H:%M:%S')
-                start_time = end_time - delta
-                print(start_time)
-                filter_ = {
-                    values['-FIELD1-']: values['-VALUE1-'],
-                    'datetime': {'$gte': start_time, '$lt': end_time}
-                }
+                filter_ = self.get_condition(values)
                 data = self.mongo.find(filter_)
                 self.window['-DATA-'].update(value=data)
 
