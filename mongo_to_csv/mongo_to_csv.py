@@ -1,5 +1,5 @@
 import os
-from pymongo import MongoClient, errors
+import pymongo
 from datetime import datetime, timedelta
 from pprint import pprint
 import PySimpleGUI as sg
@@ -16,10 +16,10 @@ class Mongo:
 
     def connect_client(self, host, port):
         try:
-            self.client = MongoClient(host, int(port))
+            self.client = pymongo.MongoClient(host, int(port))
             self.dbs = self.client.list_database_names()
             return True
-        except errors.ConnectionFailure:
+        except pymongo.errors.ConnectionFailure:
             print("Failed to connect to server")
             return False
 
@@ -47,11 +47,29 @@ class Mongo:
             data.append(d)
         return data
 
-    def find(self, filter_):
+    def find(self, filter_={}):
         data = []
         for d in self.selected_collection.find(filter=filter_):
             data.append(d)
         return data
+
+    def get_fields(self):
+        fields = []
+        for d in self.selected_collection.find().sort('datetime', pymongo.DESCENDING).limit(1000):
+            [fields.append(k) for k in d.keys()]
+        fields = list(set(fields))
+        try:
+            fields.remove('_id')
+        except ValueError:
+            pass
+        return fields
+
+    def get_values(self, field):
+        values = []
+        for d in self.selected_collection.find().sort('datetime', pymongo.DESCENDING).limit(1000):
+            values.append(d[field])
+        values = list(set(values))
+        return values
 
 
 class Option:
@@ -68,13 +86,23 @@ class MainDisplay:
 
         sg.theme('DarkBlue12')
 
-        self.field_conditions = [
+        self.field_conditions_tab1 = [
             [sg.InputText('', size=(20, 1), key='-FIELD1-'), sg.Text(':'),
              sg.InputText('', size=(20, 1), key='-VALUE1-')],
             [sg.InputText('', size=(20, 1), key='-FIELD2-'), sg.Text(':'),
              sg.InputText('', size=(20, 1), key='-VALUE2-')],
             [sg.InputText('', size=(20, 1), key='-FIELD3-'), sg.Text(':'),
              sg.InputText('', size=(20, 1), key='-VALUE3-')],
+        ]
+
+        self.field_conditions_tab2 = [
+            [sg.Combo(values=(), size=(20, 5), key='-FIELDS1-'), sg.Text(':'),
+             sg.Combo(values=(), size=(20, 5), key='-VALUES1-')],
+        ]
+
+        self.field_conditions = [
+            [sg.TabGroup([[sg.Tab('tab1', self.field_conditions_tab1),
+                           sg.Tab('tab2', self.field_conditions_tab2)]], key='-CONDITIONTAB-')]
         ]
 
         self.condition_layout = [
@@ -113,7 +141,7 @@ class MainDisplay:
             self.window['-DATABASELIST-'].update(values=self.mongo.dbs)
         del option_display
 
-    def get_condition(self, values):
+    def get_condition(self, values, tab_name):
         # 時間差分を算出
         if values['-AGOUNIT-'] == 'sec':
             delta = timedelta(seconds=int(values['-AGONUM-']))
@@ -128,16 +156,31 @@ class MainDisplay:
         start_time = end_time - delta
 
         filter_ = {}
-        for i in range(1, 4):
-            if values['-FIELD' + str(i) + '-'] != '' and values['-VALUE' + str(i) + '-'] != '':
-                filter_[values['-FIELD' + str(i) + '-']] = values['-VALUE' + str(i) + '-']
-        filter_['datetime'] = {'$gte': start_time, '$lt': end_time}
+        if tab_name == 'tab1':
+            for i in range(1, 4):
+                if values['-FIELD' + str(i) + '-'] != '' and values['-VALUE' + str(i) + '-'] != '':
+                    filter_[values['-FIELD' + str(i) + '-']] = values['-VALUE' + str(i) + '-']
+            filter_['datetime'] = {'$gte': start_time, '$lt': end_time}
+        elif tab_name == 'tab2':
+            if values['-FIELDS1-'] != '' and values['-VALUES1-'] != '':
+                filter_[values['-FIELDS1-']] = values['-VALUES1-']
+            filter_['datetime'] = {'$gte': start_time, '$lt': end_time}
         return filter_
 
+    def set_fields(self):
+        fields = self.mongo.get_fields()
+        self.window['-FIELDS1-'].update(values=fields)
+
+    def set_values(self, field):
+        values = self.mongo.get_values(field)
+        self.window['-VALUES1-'].update(values=values)
+
     def main(self):
+        fields1 = ''
+
         while True:
-            event, values = self.window.read()
-            print(event, values)
+            event, values = self.window.read(timeout=1000, timeout_key='-TIMEOUT-')
+            # print(event, values)
             if event in (None, 'Exit'):
                 break
             if event == '-OPTION-':
@@ -151,12 +194,17 @@ class MainDisplay:
                 if len(values['-COLLECTIONLIST-']) <= 0:
                     continue
                 self.mongo.select_collection(values['-COLLECTIONLIST-'][0])
+                self.set_fields()
             if event == '-FIND-':
                 if len(values['-COLLECTIONLIST-']) <= 0 or self.mongo.selected_collection is None:
                     continue
-                filter_ = self.get_condition(values)
+                filter_ = self.get_condition(values, values['-CONDITIONTAB-'])
                 data = self.mongo.find(filter_)
                 self.window['-DATA-'].update(value=data)
+            if event == '-TIMEOUT-':
+                if values['-FIELDS1-'] != '' and values['-FIELDS1-'] != fields1:
+                    self.set_values(values['-FIELDS1-'])
+                    fields1 = values['-FIELDS1-']
 
         self.window.close()
 
