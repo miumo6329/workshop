@@ -78,7 +78,7 @@ class MainDisplay:
             [sg.Input(datetime.now(), size=(20, 1), key='-CALENDAR-'),
              sg.CalendarButton('calendar'),
              sg.Input('10', size=(2, 1), key='-AGONUM-'),
-             sg.InputCombo(('min', 'hour', 'day'), default_value='min', key='-AGOUNIT-'),
+             sg.InputCombo(('sec', 'min', 'hour', 'day'), default_value='min', key='-AGOUNIT-'),
              sg.Text('ago data find.')],
         ]
 
@@ -130,15 +130,26 @@ class MainDisplay:
                     continue
                 self.mongo.select_collection(values['-COLLECTIONLIST-'][0])
             if event == '-FIND-':
-                # TODO: 時間を検索条件に反映する
+                if len(values['-COLLECTIONLIST-']) <= 0 or self.mongo.selected_collection is None:
+                    continue
+                # 時間差分を算出
+                if values['-AGOUNIT-'] == 'sec':
+                    delta = timedelta(seconds=int(values['-AGONUM-']))
+                elif values['-AGOUNIT-'] == 'min':
+                    delta = timedelta(minutes=int(values['-AGONUM-']))
+                elif values['-AGOUNIT-'] == 'hour':
+                    delta = timedelta(hours=int(values['-AGONUM-']))
+                elif values['-AGOUNIT-'] == 'day':
+                    delta = timedelta(days=int(values['-AGONUM-']))
+                # 開始時間、終了時間を設定
+                end_time = datetime.strptime(values['-CALENDAR-'].split('.')[0], '%Y-%m-%d %H:%M:%S')
+                start_time = end_time - delta
+                print(start_time)
                 filter_ = {
                     values['-FIELD1-']: values['-VALUE1-'],
-                    # 'end_time': datetime.strptime(values['-CALENDAR-'].split('.')[0], '%Y-%m-%d %H:%M:%S'),
-                    # 'start_time': datetime.strptime(values['-CALENDAR-'].split('.')[0], '%Y-%m-%d %H:%M:%S') - timedelta(minutes=int(values['-AGONUM-'])),
+                    'datetime': {'$gte': start_time, '$lt': end_time}
                 }
-                print(filter_)
                 data = self.mongo.find(filter_)
-                print(data)
                 self.window['-DATA-'].update(value=data)
 
         self.window.close()
