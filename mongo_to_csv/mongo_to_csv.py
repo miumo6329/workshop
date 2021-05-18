@@ -66,6 +66,7 @@ class Mongo:
 
     def get_values(self, field):
         values = []
+        # TODO 'datetime'でソートしているが、そのドキュメントの時間keyを判定してからソートする
         for d in self.selected_collection.find().sort('datetime', pymongo.DESCENDING).limit(1000):
             values.append(d[field])
         values = list(set(values))
@@ -107,7 +108,8 @@ class MainDisplay:
 
         self.condition_layout = [
             [self.field_conditions],
-            [sg.Input(datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S'), size=(20, 1), key='-CALENDAR-'),
+            [sg.Combo(values=(), size=(15, 5), key='-DATETIME-'),
+             sg.Input(datetime.strftime(datetime.now(), '%Y-%m-%d %H:%M:%S'), size=(20, 1), key='-CALENDAR-'),
              sg.CalendarButton('calendar'),
              sg.Input('1', size=(2, 1), key='-AGONUM-'),
              sg.InputCombo(('sec', 'min', 'hour', 'day'), default_value='min', key='-AGOUNIT-'),
@@ -160,16 +162,17 @@ class MainDisplay:
             for i in range(1, 4):
                 if values['-FIELD' + str(i) + '-'] != '' and values['-VALUE' + str(i) + '-'] != '':
                     filter_[values['-FIELD' + str(i) + '-']] = values['-VALUE' + str(i) + '-']
-            filter_['datetime'] = {'$gte': start_time, '$lt': end_time}
+            filter_[values['-DATETIME-']] = {'$gte': start_time, '$lt': end_time}
         elif tab_name == 'tab2':
             if values['-FIELDS1-'] != '' and values['-VALUES1-'] != '':
                 filter_[values['-FIELDS1-']] = values['-VALUES1-']
-            filter_['datetime'] = {'$gte': start_time, '$lt': end_time}
+            filter_[values['-DATETIME-']] = {'$gte': start_time, '$lt': end_time}
         return filter_
 
     def set_fields(self):
         fields = self.mongo.get_fields()
         self.window['-FIELDS1-'].update(values=fields)
+        self.window['-DATETIME-'].update(values=fields)
 
     def set_values(self, field):
         values = self.mongo.get_values(field)
