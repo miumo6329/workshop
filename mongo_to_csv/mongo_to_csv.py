@@ -53,8 +53,15 @@ class Mongo:
             data.append(d)
         return data
 
+    def find_recent(self, datetime_key, filter_={}):
+        data = []
+        for d in self.selected_collection.find(filter=filter_).sort(datetime_key, pymongo.DESCENDING).limit(100):
+            data.append(d)
+        return data
+
     def get_fields(self):
         fields = []
+        # TODO 'datetime'でソートしているが、そのドキュメントの時間keyを判定してからソートする
         for d in self.selected_collection.find().sort('datetime', pymongo.DESCENDING).limit(1000):
             [fields.append(k) for k in d.keys()]
         fields = list(set(fields))
@@ -128,7 +135,7 @@ class MainDisplay:
             [sg.HorizontalSeparator()],
             [sg.Text('Setting find Conditions.')],
             [self.condition_layout],
-            [sg.Button('Find', key='-FIND-')],
+            [sg.Button('Find', key='-FIND-'), sg.Button('Find Recent', key='-RECENT-')],
             [sg.Multiline(default_text='', size=(70, 20), key='-DATA-')]
         ]
         self.window = sg.Window(title='MongoToCsv', layout=self.layout, finalize=True)
@@ -143,7 +150,16 @@ class MainDisplay:
             self.window['-DATABASELIST-'].update(values=self.mongo.dbs)
         del option_display
 
-    def get_condition(self, values, tab_name):
+    def get_field_condition(self, filter_, values, tab_name):
+        if tab_name == 'tab1':
+            for i in range(1, 4):
+                if values['-FIELD' + str(i) + '-'] != '' and values['-VALUE' + str(i) + '-'] != '':
+                    filter_[values['-FIELD' + str(i) + '-']] = values['-VALUE' + str(i) + '-']
+        elif tab_name == 'tab2':
+            if values['-FIELDS1-'] != '' and values['-VALUES1-'] != '':
+                filter_[values['-FIELDS1-']] = values['-VALUES1-']
+
+    def get_datetime_condition(self, filter_, values):
         # 時間差分を算出
         if values['-AGOUNIT-'] == 'sec':
             delta = timedelta(seconds=int(values['-AGONUM-']))
@@ -156,18 +172,7 @@ class MainDisplay:
         # 開始時間、終了時間を設定
         end_time = datetime.strptime(values['-CALENDAR-'].split('.')[0], '%Y-%m-%d %H:%M:%S')
         start_time = end_time - delta
-
-        filter_ = {}
-        if tab_name == 'tab1':
-            for i in range(1, 4):
-                if values['-FIELD' + str(i) + '-'] != '' and values['-VALUE' + str(i) + '-'] != '':
-                    filter_[values['-FIELD' + str(i) + '-']] = values['-VALUE' + str(i) + '-']
-            filter_[values['-DATETIME-']] = {'$gte': start_time, '$lt': end_time}
-        elif tab_name == 'tab2':
-            if values['-FIELDS1-'] != '' and values['-VALUES1-'] != '':
-                filter_[values['-FIELDS1-']] = values['-VALUES1-']
-            filter_[values['-DATETIME-']] = {'$gte': start_time, '$lt': end_time}
-        return filter_
+        filter_[values['-DATETIME-']] = {'$gte': start_time, '$lt': end_time}
 
     def set_fields(self):
         fields = self.mongo.get_fields()
@@ -201,8 +206,17 @@ class MainDisplay:
             if event == '-FIND-':
                 if len(values['-COLLECTIONLIST-']) <= 0 or self.mongo.selected_collection is None:
                     continue
-                filter_ = self.get_condition(values, values['-CONDITIONTAB-'])
+                filter_ = {}
+                self.get_field_condition(filter_, values, values['-CONDITIONTAB-'])
+                self.get_datetime_condition(filter_, values)
                 data = self.mongo.find(filter_)
+                self.window['-DATA-'].update(value=data)
+            if event == '-RECENT-':
+                if len(values['-COLLECTIONLIST-']) <= 0 or self.mongo.selected_collection is None:
+                    continue
+                filter_ = {}
+                self.get_field_condition(filter_, values, values['-CONDITIONTAB-'])
+                data = self.mongo.find_recent(datetime_key=values['-DATETIME-'], filter_=filter_)
                 self.window['-DATA-'].update(value=data)
             if event == '-TIMEOUT-':
                 if values['-FIELDS1-'] != '' and values['-FIELDS1-'] != fields1:
