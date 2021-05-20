@@ -14,11 +14,12 @@ class Mongo:
         self.selected_db = None
         self.selected_collection = None
 
-    def connect_client(self, host, port):
+    def connect_client(self, host, port, username, password):
         try:
-            self.client = pymongo.MongoClient(host, int(port))
+            self.client = pymongo.MongoClient(host, int(port), username=username, password=password)
             self.dbs = self.client.list_database_names()
             return True
+        # TODO; pymongo.errors.OperationFailure等、他のエラー時の処理
         except pymongo.errors.ConnectionFailure:
             print("Failed to connect to server")
             return False
@@ -85,6 +86,8 @@ class Option:
         self.export_path = __file__
         self.host = 'localhost'
         self.port = '27017'
+        self.username = ''
+        self.password = ''
 
 
 class MainDisplay:
@@ -140,8 +143,9 @@ class MainDisplay:
         ]
         self.window = sg.Window(title='MongoToCsv', layout=self.layout, finalize=True)
 
-        if self.mongo.connect_client(self.option.host, self.option.port):
-            self.window['-DATABASELIST-'].update(values=self.mongo.dbs)
+        # TODO: 起動時DB接続は停止中、ConnectionFailureの場合メッセージが出るのに時間がかかるため起動が遅くなる
+        # if self.mongo.connect_client(self.option.host, self.option.port, self.option.username, self.option.password):
+        #     self.window['-DATABASELIST-'].update(values=self.mongo.dbs)
 
     def call_option_display(self):
         option_display = OptionDisplay(self.option, self.mongo)
@@ -233,19 +237,22 @@ class OptionDisplay:
 
         sg.theme('DarkBlue11')
         tab1_layout = [
-            [sg.Text('host', size=(5, 1)), sg.Input(option.host, size=(15, 1), key='host')],
-            [sg.Text('port', size=(5, 1)), sg.Input(option.port, size=(15, 1), key='post')],
+            [sg.Text('host', size=(5, 1)), sg.Input(option.host, size=(15, 1), key='host'), sg.Text('', size=(3, 1)),
+             sg.Text('username', size=(7, 1)), sg.Input(option.username, size=(15, 1), key='username')],
+            [sg.Text('port', size=(5, 1)), sg.Input(option.port, size=(15, 1), key='port'), sg.Text('', size=(3, 1)),
+             sg.Text('password', size=(7, 1)),
+             sg.Input(option.password, size=(15, 1), password_char= '*', key='password')],
             [sg.Submit(button_text='Connect MongoDB'),
              sg.Text(key='Connect MongoDB Result', size=(15, 1))]
         ]
         tab2_layout = [
             [sg.Text('export', size=(5, 1)),
-             sg.InputText(os.path.dirname(self.option.export_path)),
+             sg.InputText(os.path.dirname(self.option.export_path), key='-EXPORTPATH-'),
              sg.FolderBrowse()]
         ]
         self.layout = [
             [sg.TabGroup([[sg.Tab('Connect', tab1_layout), sg.Tab('Export', tab2_layout)]])],
-            [sg.Text('', size=(50, 1)), sg.Exit()]
+            [sg.Text('', size=(45, 1)), sg.OK(key='-SAVEOPTION-'), sg.Exit()]
         ]
         self.window = sg.Window(title='Option', layout=self.layout)
 
@@ -257,11 +264,18 @@ class OptionDisplay:
             if event in (None, 'Exit'):
                 break
             if event == 'Connect MongoDB':
-                if self.mongo.connect_client(values['host'], values['post']):
+                if self.mongo.connect_client(values['host'], values['port'], values['username'], values['password']):
                     self.window['Connect MongoDB Result'].update('Success!', text_color=("#0000ff"))
                     client_updated = True
                 else:
                     self.window['Connect MongoDB Result'].update('Error!', text_color=('#ff0000'))
+            if event == '-SAVEOPTION-':
+                self.option.host = values['host']
+                self.option.port = values['port']
+                self.option.username = values['username']
+                self.option.password = values['password']
+                self.option.export_path = values['-EXPORTPATH-']
+                break
         self.window.close()
         return client_updated
 
