@@ -1,4 +1,5 @@
 import os
+import traceback
 import pymongo
 from datetime import datetime, timedelta
 from pprint import pprint
@@ -18,11 +19,9 @@ class Mongo:
         try:
             self.client = pymongo.MongoClient(host, int(port), username=username, password=password)
             self.dbs = self.client.list_database_names()
-            return True
-        # TODO; pymongo.errors.OperationFailure等、他のエラー時の処理
-        except pymongo.errors.ConnectionFailure:
-            print("Failed to connect to server")
-            return False
+            return True, ''
+        except Exception as e:
+            return False, e
 
     def select_db(self, db_name):
         self.selected_db = self.client[db_name]
@@ -264,11 +263,15 @@ class OptionDisplay:
             if event in (None, 'Exit'):
                 break
             if event == 'Connect MongoDB':
-                if self.mongo.connect_client(values['host'], values['port'], values['username'], values['password']):
+                success, message = self.mongo.connect_client(values['host'], values['port'],
+                                                             values['username'], values['password'])
+                if success:
                     self.window['Connect MongoDB Result'].update('Success!', text_color=("#0000ff"))
                     client_updated = True
                 else:
                     self.window['Connect MongoDB Result'].update('Error!', text_color=('#ff0000'))
+                    tb = traceback.format_exc()
+                    sg.popup_error('AN EXCEPTION OCCURRED!', message, tb)
             if event == '-SAVEOPTION-':
                 self.option.host = values['host']
                 self.option.port = values['port']
@@ -280,8 +283,16 @@ class OptionDisplay:
         return client_updated
 
 
+def main():
+    try:
+        main_display = MainDisplay()
+        main_display.main()
+    except Exception as e:
+        tb = traceback.format_exc()
+        sg.popup_error('AN EXCEPTION OCCURRED!', e, tb)
+
+
 if __name__ == '__main__':
-    main_display = MainDisplay()
-    main_display.main()
+    main()
 
 
