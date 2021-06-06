@@ -1,13 +1,18 @@
 
-flet-board {
+.finger-board {
     display: flex;
-    width: 100%;
+    flex-wrap: nowrap;
+    width: 500px;
 }
 
 .string-area {
     width: 30px;
     height: 30px;
     margin: 0;
+}
+
+.string-area:hover {
+    background-color: lightgray;
 }
 
 .string {
@@ -19,14 +24,18 @@ flet-board {
     background-color: black;
 }
 
-.string-area:hover {
-    background-color: lightgray;
-}
-
 .flet {
     position: relative;
     top: 15px;
     width: 2px;
+    height: 152px;
+    background-color: black;
+}
+
+.nut {
+    position: relative;
+    top: 15px;
+    width: 4px;
     height: 152px;
     background-color: black;
 }
