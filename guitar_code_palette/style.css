@@ -1,8 +1,33 @@
 
+flet-board {
+    display: flex;
+    width: 100%;
+}
+
+.string-area {
+    width: 30px;
+    height: 30px;
+    margin: 0;
+}
+
 .string {
-    width: 500px;
+    position: relative;
+    top: 50%;
+    margin: 0;
+    width: 30px;
     height: 2px;
-    margin-top: 25px;
-    margin-bottom: 25px;
     background-color: black;
 }
+
+.string-area:hover {
+    background-color: lightgray;
+}
+
+.flet {
+    position: relative;
+    top: 15px;
+    width: 2px;
+    height: 152px;
+    background-color: black;
+}
+
