@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Web Audio API</title>
+  </head>
+  <body>
+    <midi-player
+      src="https://magenta.github.io/magenta-js/music/demos/melody.mid"
+      sound-font="https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus"
+      visualizer="#myVisualizer">
+    </midi-player>
+
+    <button id="btn">test</button>
+
+    <script src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.58,npm/@magenta/music@1.22.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.3.0"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
